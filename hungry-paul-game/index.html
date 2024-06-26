@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>貪吃保羅遊戲</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            touch-action: none;
+        }
+        #game-container {
+            text-align: center;
+        }
+        canvas {
+            border: 1px solid #000;
+            max-width: 100%;
+            max-height: 70vh;
+        }
+        button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #score {
+            font-size: 24px;
+            margin-top: 10px;
+        }
+        #controls {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>貪吃保羅遊戲</h1>
+        <canvas id="gameCanvas" width="240" height="240"></canvas>
+        <div id="score">長度: 1</div>
+        <div id="gameOver" style="display: none;">
+            <p>遊戲結束!</p>
+            <button onclick="resetGame()">重新開始</button>
+        </div>
+        <div id="controls">
+            <p>使用鍵盤方向鍵或在螢幕上滑動來控制</p>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameOverElement = document.getElementById('gameOver');
+        const scoreElement = document.getElementById('score');
+
+        const GRID_SIZE = 12;
+        const CELL_SIZE = 20;
+        const GAME_SPEED = 200;
+
+        let snake = [[6, 6]];
+        let food = [3, 3];
+        let direction = 'right';
+        let gameOver = false;
+        let foodEmoji = '🍎';
+        const foodOptions = ['🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍒', '🍑', '🥝', '🍍'];
+
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        function drawSnake() {
+            snake.forEach(([x, y], index) => {
+                ctx.fillStyle = 'green';
+                ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                if (index === 0) {
+                    ctx.fillStyle = 'white';
+                    ctx.font = '15px Arial';
+                    ctx.fillText('保', x * CELL_SIZE + 3, y * CELL_SIZE + 15);
+                }
+            });
+        }
+
+        function drawFood() {
+            ctx.font = '20px Arial';
+            ctx.fillText(foodEmoji, food[0] * CELL_SIZE, food[1] * CELL_SIZE + 20);
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = 'lightgray';
+            for (let i = 0; i <= GRID_SIZE; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * CELL_SIZE, 0);
+                ctx.lineTo(i * CELL_SIZE, GRID_SIZE * CELL_SIZE);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(0, i * CELL_SIZE);
+                ctx.lineTo(GRID_SIZE * CELL_SIZE, i * CELL_SIZE);
+                ctx.stroke();
+            }
+        }
+
+        function moveSnake() {
+            const head = [...snake[0]];
+            switch (direction) {
+                case 'up':
+                    head[1] = (head[1] - 1 + GRID_SIZE) % GRID_SIZE;
+                    break;
+                case 'down':
+                    head[1] = (head[1] + 1) % GRID_SIZE;
+                    break;
+                case 'left':
+                    head[0] = (head[0] - 1 + GRID_SIZE) % GRID_SIZE;
+                    break;
+                case 'right':
+                    head[0] = (head[0] + 1) % GRID_SIZE;
+                    break;
+            }
+
+            if (head[0] === food[0] && head[1] === food[1]) {
+                food = getRandomPosition();
+                foodEmoji = foodOptions[Math.floor(Math.random() * foodOptions.length)];
+                updateScore();
+            } else {
+                snake.pop();
+            }
+
+            if (checkCollision(head)) {
+                gameOver = true;
+                gameOverElement.style.display = 'block';
+                return;
+            }
+
+            snake.unshift(head);
+        }
+
+        function getRandomPosition() {
+            return [
+                Math.floor(Math.random() * GRID_SIZE),
+                Math.floor(Math.random() * GRID_SIZE)
+            ];
+        }
+
+        function checkCollision(head) {
+            return snake.some(([x, y], index) => index > 0 && x === head[0] && y === head[1]);
+        }
+
+        function resetGame() {
+            snake = [[6, 6]];
+            food = getRandomPosition();
+            direction = 'right';
+            gameOver = false;
+            gameOverElement.style.display = 'none';
+            foodEmoji = foodOptions[Math.floor(Math.random() * foodOptions.length)];
+            updateScore();
+        }
+
+        function updateScore() {
+            scoreElement.textContent = `長度: ${snake.length}`;
+        }
+
+        function gameLoop() {
+            if (gameOver) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            drawSnake();
+            drawFood();
+            moveSnake();
+        }
+
+        function changeDirection(newDirection) {
+            const opposites = { 'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left' };
+            if (newDirection !== opposites[direction]) {
+                direction = newDirection;
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case 'ArrowUp':
+                    changeDirection('up');
+                    break;
+                case 'ArrowDown':
+                    changeDirection('down');
+                    break;
+                case 'ArrowLeft':
+                    changeDirection('left');
+                    break;
+                case 'ArrowRight':
+                    changeDirection('right');
+                    break;
+            }
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        });
+
+        canvas.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+
+            const dx = touchEndX - touchStartX;
+            const dy = touchEndY - touchStartY;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                changeDirection(dx > 0 ? 'right' : 'left');
+            } else {
+                changeDirection(dy > 0 ? 'down' : 'up');
+            }
+        });
+
+        setInterval(gameLoop, GAME_SPEED);
+    </script>
+</body>
+</html>
